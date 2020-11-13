@@ -6,7 +6,6 @@ import static org.springframework.hateoas.server.mvc.ControllerLinkBuilder.*;
 
 import org.springframework.hateoas.server.mvc.ControllerLinkBuilder;
 import org.springframework.http.ResponseEntity;
-import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
@@ -23,6 +22,9 @@ public class UserJPAResource {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private PostRepository postRepository;
 
     @GetMapping("/jpa/users")
     public List<User> retrieveAllUsers() {
@@ -54,5 +56,29 @@ public class UserJPAResource {
     public void deleteUser(@PathVariable int id) {
         userRepository.deleteById(id);
     }
+
+    @GetMapping("/jpa/users/{id}/posts")
+    public List<Post> retreiveAllUserPosts(@PathVariable int id) {
+        Optional<User> userOptional = userRepository.findById(id);
+        if(!userOptional.isPresent()) {
+            throw new UserNotFoundException("id-"+id);
+        }
+
+        return userOptional.get().getPosts();
+    }
+
+    @PostMapping("/jpa/users/{id}/posts")
+    public ResponseEntity<Object> cretePost(@PathVariable int id, @RequestBody Post post) {
+        Optional<User> savedUser = userRepository.findById(id);
+        if(!savedUser.isPresent()) {
+            throw new UserNotFoundException("id-"+id);
+        }
+        User user = savedUser.get();
+        post.setUser(user);
+        postRepository.save(post);
+        URI location =  ServletUriComponentsBuilder.fromCurrentRequest().path("/{id}").buildAndExpand(post.getId()).toUri();
+        return ResponseEntity.created(location).build();
+    }
+
 
 }
